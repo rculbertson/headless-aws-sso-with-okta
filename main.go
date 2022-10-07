@@ -17,7 +17,6 @@ import (
 	"github.com/theckman/yacspin"
 
 	"github.com/go-rod/rod"
-	"github.com/go-rod/rod/lib/input"
 	"github.com/go-rod/rod/lib/proto"
 )
 
@@ -112,7 +111,7 @@ func ssoLogin(url string) {
 		// authorize
 		spinner.Unpause()
 		spinner.Message("logging in")
-		page.MustElementR("button", "Next").MustWaitEnabled().MustPress()
+		page.MustElementR("button", "Next").MustWaitEnabled().MustClick()
 
 		// sign-in
 		page.Race().ElementR("button", "Allow").MustHandle(func(e *rod.Element) {
@@ -151,8 +150,8 @@ func ssoLogin(url string) {
 
 // executes aws sso signin step
 func signIn(page rod.Page, username, passphrase string) {
-	page.MustElement("#awsui-input-0").MustInput(username).MustPress(input.Enter)
-	page.MustElement("#awsui-input-1").MustInput(passphrase).MustPress(input.Enter)
+	page.MustElement("#awsui-input-0").MustInput(username)
+	page.MustElement("#awsui-input-1").MustInput(passphrase)
 }
 
 // TODO: allow user to enter MFA Code
