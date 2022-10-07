@@ -91,9 +91,8 @@ func getCredentials() (string, string) {
 	_ = json.Unmarshal(out, &arr)
 	creds := arr[0]
 
-	username := creds.Login
-	passphrase := creds.Password
-
+	username := creds.email
+	passphrase := creds.password
 	return username, passphrase
 }
 
