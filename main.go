@@ -9,14 +9,11 @@ import (
 	"log"
 	"os"
 	"os/exec"
-	"os/user"
-	"path/filepath"
 	"regexp"
 	"time"
 
 	"github.com/fatih/color"
 	"github.com/gen2brain/beeep"
-	"github.com/git-lfs/go-netrc/netrc"
 	"github.com/theckman/yacspin"
 
 	"github.com/go-rod/rod"
@@ -78,7 +75,7 @@ func getURL() string {
 	return url
 }
 
-// get aws credentials from netrc file
+// get okta credentials from dashlane
 func getCredentials() (string, string) {
 	spinner.Message("fetching credentials from Dashlane")
 
@@ -89,19 +86,13 @@ func getCredentials() (string, string) {
 		log.Fatal(err)
 	}
 
-	// Extract Okta creds from output JSON
+	// Extract okta creds from output JSON
 	var arr []Credential
 	_ = json.Unmarshal(out, &arr)
 	creds := arr[0]
 
-	usr, _ := user.Current()
-	f, err := netrc.ParseFile(filepath.Join(usr.HomeDir, ".netrc"))
-	if err != nil {
-		panic(".netrc file not found in HOME directory")
-	}
-
-	username := f.FindMachine("headless-sso", "").Login
-	passphrase := f.FindMachine("headless-sso", "").Password
+	username := creds.Login
+	passphrase := creds.Password
 
 	return username, passphrase
 }
