@@ -98,6 +98,7 @@ func getCredentials() (string, string) {
 // login with hardware MFA
 func ssoLogin(url string) {
 	username, passphrase := getCredentials()
+	mfaCode := "111111" // TODO: need real integration
 	spinner.Message(color.MagentaString("init headless-browser \n"))
 	spinner.Pause()
 	browser := rod.New().MustConnect().Trace(false)
@@ -113,12 +114,8 @@ func ssoLogin(url string) {
 		page.MustElementR("button", "Next").MustWaitEnabled().MustClick()
 
 		// sign-in
-		page.Race().ElementR("button", "Allow").MustHandle(func(e *rod.Element) {
-		}).Element("#awsui-input-0").MustHandle(func(e *rod.Element) {
-			signIn(*page, username, passphrase)
-			// mfa required step
-			mfa(*page)
-		}).MustDo()
+		oktaSignIn(*page, username, passphrase)
+		oktaAuthMfa(*page, mfaCode)
 
 		// allow request
 		unauthorized := true
@@ -147,10 +144,12 @@ func ssoLogin(url string) {
 	}
 }
 
-// executes aws sso signin step
-func signIn(page rod.Page, username, passphrase string) {
-	page.MustElement("#awsui-input-0").MustInput(username)
-	page.MustElement("#awsui-input-1").MustInput(passphrase)
+// executes okta signin step
+func oktaSignIn(page rod.Page, username, passphrase string) {
+	page.Timeout(MFA_TIMEOUT * time.Second).MustElement(".okta-sign-in-header").MustWaitLoad()
+	page.MustElement("#okta-signin-username").MustInput(username)
+	page.MustElement("#okta-signin-password").MustInput(passphrase)
+	page.MustWaitLoad().MustElementR("input", "Sign In").MustClick()
 }
 
 // TODO: allow user to enter MFA Code
@@ -159,6 +158,11 @@ func mfa(page rod.Page) {
 	_ = beeep.Beep(beeep.DefaultFreq, beeep.DefaultDuration)
 
 	spinner.Message(color.YellowString("Touch U2F"))
+}
+
+func oktaAuthMfa(page rod.Page, mfaCode string) {
+	page.MustElement("form.mfa-verify-totp input").MustInput(mfaCode)
+	page.MustWaitLoad().MustElementR("input", "Verify").MustClick()
 }
 
 // load cookies
