@@ -6,7 +6,7 @@ require (
 	github.com/fatih/color v1.13.0
 	github.com/gen2brain/beeep v0.0.0-20220518085355-d7852edf42fc
 	github.com/git-lfs/go-netrc v0.0.0-20210914205454-f0c862dd687a
-	github.com/go-rod/rod v0.105.1
+	github.com/go-rod/rod v0.111.0
 )
 
 require (
@@ -23,7 +23,7 @@ require (
 	github.com/mattn/go-isatty v0.0.14 // indirect
 	github.com/theckman/yacspin v0.13.12
 	github.com/ysmood/goob v0.4.0 // indirect
-	github.com/ysmood/gson v0.7.1 // indirect
-	github.com/ysmood/leakless v0.7.0 // indirect
+	github.com/ysmood/gson v0.7.2 // indirect
+	github.com/ysmood/leakless v0.8.0 // indirect
 	golang.org/x/sys v0.0.0-20220818161305-2296e01440c6 // indirect
 )
