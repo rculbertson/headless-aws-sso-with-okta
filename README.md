@@ -1,4 +1,4 @@
-## headless-sso
+## linksquares-headless-sso
 Runs [aws sso login]() headlessly when using the `--no-browser` option.
 
 [![Go Reference](https://pkg.go.dev/badge/github.com/mziyabo/headless-sso.svg)](https://pkg.go.dev/github.com/mziyabo/headless-sso) [![Go Report Card](https://goreportcard.com/badge/github.com/mziyabo/headless-sso)](https://goreportcard.com/report/github.com/mziyabo/headless-sso) 
@@ -25,6 +25,9 @@ go install github.com/mziyabo/headless-sso@latest
 
 **Windows**: Download latest Windows binary from the [Releases Page](https://github.com/mziyabo/headless-sso/releases) and unzip to location in PATH
 
+#### Dependancies:
+
+This tool requires you to have installed and configured Dashlane's official CLI tool. You can find installation instructions here: [Dashlane CLI](https://github.com/Dashlane/dashlane-cli/tree/master/src)
 ### Usage:
 
 ``` bash
