@@ -6,7 +6,9 @@ import (
 	b64 "encoding/base64"
 	"encoding/json"
 	"errors"
+	"log"
 	"os"
+	"os/exec"
 	"os/user"
 	"path/filepath"
 	"regexp"
@@ -39,6 +41,11 @@ var cfg = yacspin.Config{
 }
 
 var spinner, _ = yacspin.New(cfg)
+
+type Credential struct {
+	Login    string
+	Password string
+}
 
 func main() {
 	spinner.Start()
@@ -73,7 +80,19 @@ func getURL() string {
 
 // get aws credentials from netrc file
 func getCredentials() (string, string) {
-	spinner.Message("fetching credentials from .netrc")
+	spinner.Message("fetching credentials from Dashlane")
+
+	// Run dcli from shell, receive output in JSON format
+	cmd := exec.Command("dcli", "password", "okta", "--output", "json")
+	out, err := cmd.CombinedOutput()
+	if err := cmd.Run(); err != nil {
+		log.Fatal(err)
+	}
+
+	// Extract Okta creds from output JSON
+	var arr []Credential
+	_ = json.Unmarshal(out, &arr)
+	creds := arr[0]
 
 	usr, _ := user.Current()
 	f, err := netrc.ParseFile(filepath.Join(usr.HomeDir, ".netrc"))
@@ -95,10 +114,10 @@ func ssoLogin(url string) {
 	browser := rod.New().MustConnect().Trace(false)
 	loadCookies(*browser)
 	defer browser.MustClose()
-	
+
 	err := rod.Try(func() {
 		page := browser.MustPage(url)
-		
+
 		// authorize
 		spinner.Unpause()
 		spinner.Message("logging in")
