@@ -82,7 +82,7 @@ func getCredentials() (string, string) {
 	// Run dcli from shell, receive output in JSON format
 	cmd := exec.Command("dcli", "password", "okta", "--output", "json")
 	out, err := cmd.CombinedOutput()
-	if err := cmd.Run(); err != nil {
+	if err != nil {
 		log.Fatal(err)
 	}
 
