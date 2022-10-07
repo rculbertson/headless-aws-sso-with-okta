@@ -1,4 +1,4 @@
-module github.com/mziyabo/headless-sso
+module github.com/maxcroy1/linksquares-headless-sso
 
 go 1.17
 
