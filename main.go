@@ -6,15 +6,14 @@ import (
 	b64 "encoding/base64"
 	"encoding/json"
 	"errors"
+	"log"
 	"os"
-	"os/user"
-	"path/filepath"
+	"os/exec"
 	"regexp"
 	"time"
 
 	"github.com/fatih/color"
 	"github.com/gen2brain/beeep"
-	"github.com/git-lfs/go-netrc/netrc"
 	"github.com/theckman/yacspin"
 
 	"github.com/go-rod/rod"
@@ -39,6 +38,11 @@ var cfg = yacspin.Config{
 }
 
 var spinner, _ = yacspin.New(cfg)
+
+type Credential struct {
+	Login    string
+	Password string
+}
 
 func main() {
 	spinner.Start()
@@ -71,18 +75,24 @@ func getURL() string {
 	return url
 }
 
-// get aws credentials from netrc file
+// get okta credentials from dashlane
 func getCredentials() (string, string) {
-	spinner.Message("fetching credentials from .netrc")
+	spinner.Message("fetching credentials from Dashlane")
 
-	usr, _ := user.Current()
-	f, err := netrc.ParseFile(filepath.Join(usr.HomeDir, ".netrc"))
+	// Run dcli from shell, receive output in JSON format
+	cmd := exec.Command("dcli", "password", "okta", "--output", "json")
+	out, err := cmd.CombinedOutput()
 	if err != nil {
-		panic(".netrc file not found in HOME directory")
+		log.Fatal(err)
 	}
 
-	username := f.FindMachine("headless-sso", "").Login
-	passphrase := f.FindMachine("headless-sso", "").Password
+	// Extract okta creds from output JSON
+	var arr []Credential
+	_ = json.Unmarshal(out, &arr)
+	creds := arr[0]
+
+	username := creds.Login
+	passphrase := creds.Password
 
 	return username, passphrase
 }
@@ -95,10 +105,10 @@ func ssoLogin(url string) {
 	browser := rod.New().MustConnect().Trace(false)
 	loadCookies(*browser)
 	defer browser.MustClose()
-	
+
 	err := rod.Try(func() {
 		page := browser.MustPage(url)
-		
+
 		// authorize
 		spinner.Unpause()
 		spinner.Message("logging in")
