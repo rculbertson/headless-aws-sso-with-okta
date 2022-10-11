@@ -45,11 +45,12 @@ type Credential struct {
 
 func main() {
 	spinner.Start()
+	mfa_code := os.Args[1]
 
 	// get sso url from stdin
 	url := getURL()
 	// start aws sso login
-	ssoLogin(url)
+	ssoLogin(mfa_code, url)
 
 	spinner.Stop()
 	time.Sleep(1 * time.Second)
@@ -96,9 +97,8 @@ func getCredentials() (string, string) {
 }
 
 // login with hardware MFA
-func ssoLogin(url string) {
+func ssoLogin(mfa_code string, url string) {
 	username, passphrase := getCredentials()
-	mfaCode := "111111" // TODO: need real integration
 	spinner.Message(color.MagentaString("init headless-browser \n"))
 	spinner.Pause()
 	browser := rod.New().MustConnect().Trace(false)
@@ -114,7 +114,7 @@ func ssoLogin(url string) {
 
 		// sign-in
 		oktaSignIn(*page, username, passphrase)
-		oktaAuthMfa(*page, mfaCode)
+		oktaAuthMfa(*page, mfa_code)
 
 		// allow request
 		unauthorized := true
