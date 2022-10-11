@@ -40,6 +40,7 @@ var spinner, _ = yacspin.New(cfg)
 
 type Credential struct {
 	Email    string
+	Login    string
 	Password string
 }
 
@@ -91,7 +92,14 @@ func getCredentials() (string, string) {
 	_ = json.Unmarshal(out, &arr)
 	creds := arr[0]
 
-	username := creds.Email
+	var username string
+	if len(creds.Email) > 0 {
+		username = creds.Email
+	} else if len(creds.Login) > 0 {
+		username = creds.Login
+	} else {
+		error("Cannot find a valid login.")
+	}
 	passphrase := creds.Password
 	return username, passphrase
 }
