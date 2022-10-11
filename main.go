@@ -101,7 +101,7 @@ func ssoLogin(mfa_code string, url string) {
 	username, passphrase := getCredentials()
 	spinner.Message(color.MagentaString("init headless-browser \n"))
 	spinner.Pause()
-	browser := rod.New().MustConnect().Trace(false)
+	browser := rod.New().MustConnect()
 	defer browser.MustClose()
 
 	err := rod.Try(func() {
