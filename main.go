@@ -99,7 +99,7 @@ func getCredentials() (string, string) {
 // login with hardware MFA
 func ssoLogin(mfa_code string, url string) {
 	username, passphrase := getCredentials()
-	spinner.Message(color.MagentaString("init headless-browser \n"))
+	spinner.Message(color.MagentaString("init headless-browser"))
 	spinner.Pause()
 	browser := rod.New().MustConnect().Trace(false)
 	defer browser.MustClose()
