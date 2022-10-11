@@ -81,7 +81,7 @@ func getCredentials() (string, string) {
 	spinner.Message("fetching credentials from Dashlane")
 
 	// Run dcli from shell, receive output in JSON format
-	cmd := exec.Command("bin/dcli", "password", "okta", "--output", "json")
+	cmd := exec.Command("dcli", "password", "okta", "--output", "json")
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		log.Fatal(err)
