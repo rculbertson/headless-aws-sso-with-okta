@@ -39,7 +39,7 @@ var cfg = yacspin.Config{
 var spinner, _ = yacspin.New(cfg)
 
 type Credential struct {
-	Login    string
+	Email    string
 	Password string
 }
 
@@ -80,7 +80,7 @@ func getCredentials() (string, string) {
 	spinner.Message("fetching credentials from Dashlane")
 
 	// Run dcli from shell, receive output in JSON format
-	cmd := exec.Command("dcli", "password", "okta", "--output", "json")
+	cmd := exec.Command("bin/dcli", "password", "okta", "--output", "json")
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		log.Fatal(err)
@@ -91,7 +91,7 @@ func getCredentials() (string, string) {
 	_ = json.Unmarshal(out, &arr)
 	creds := arr[0]
 
-	username := creds.Login
+	username := creds.Email
 	passphrase := creds.Password
 	return username, passphrase
 }
@@ -102,7 +102,6 @@ func ssoLogin(mfa_code string, url string) {
 	spinner.Message(color.MagentaString("init headless-browser \n"))
 	spinner.Pause()
 	browser := rod.New().MustConnect().Trace(false)
-	loadCookies(*browser)
 	defer browser.MustClose()
 
 	err := rod.Try(func() {
@@ -133,8 +132,6 @@ func ssoLogin(mfa_code string, url string) {
 				time.Sleep(500 * time.Millisecond)
 			}
 		}
-
-		saveCookies(*browser)
 	})
 
 	if errors.Is(err, context.DeadlineExceeded) {
