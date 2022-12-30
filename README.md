@@ -1,7 +1,7 @@
-## linksquares-headless-sso
+## headless-aws-sso-with-okta
 Runs [aws sso login]() headlessly when using the `--no-browser` option.
 
-[![Go Reference](https://pkg.go.dev/badge/github.com/maxcroy1/linksquares-headless-sso.svg)](https://pkg.go.dev/github.com/maxcroy1/linksquares-headless-sso) [![Go Report Card](https://goreportcard.com/badge/github.com/maxcroy1/linksquares-headless-sso)](https://goreportcard.com/report/github.com/maxcroy1/linksquares-headless-sso) 
+[![Go Reference](https://pkg.go.dev/badge/github.com/ekesken/headless-aws-sso-with-okta.svg)](https://pkg.go.dev/github.com/ekesken/headless-aws-sso-with-okta) [![Go Report Card](https://goreportcard.com/badge/github.com/ekesken/headless-aws-sso-with-okta)](https://goreportcard.com/report/github.com/ekesken/headless-aws-sso-with-okta)
 
 ### Background
 
@@ -13,17 +13,17 @@ To download the latest release, run:
 > For ARM systems, please change ARCH to `arm64`
 
 ``` sh
- curl --silent --location https://github.com/maxcroy1/linksquares-headless-sso/releases/latest/download/headless-sso_0.2.0_$(uname -s)_x86_64.tar.gz | tar xz -C /tmp/
- sudo mv /tmp/headless-sso /usr/local/bin
+ curl --silent --location https://github.com/ekesken/headless-aws-sso-with-okta/releases/latest/download/headless-aws-sso-with-okta_0.2.0_$(uname -s)_x86_64.tar.gz | tar xz -C /tmp/
+ sudo mv /tmp/headless-aws-sso-with-okta /usr/local/bin
 ```
 
 Alternatively:
 
 ``` sh
-go install github.com/maxcroy1/linksquares-headless-sso@latest
+go install github.com/ekesken/headless-aws-sso-with-okta@latest
 ```
 
-**Windows**: Download latest Windows binary from the [Releases Page](https://github.com/maxcroy1/linksquares-headless-sso/releases) and unzip to location in PATH
+**Windows**: Download latest Windows binary from the [Releases Page](https://github.com/ekesken/headless-aws-sso-with-okta/releases) and unzip to location in PATH
 
 #### Dependancies:
 
@@ -31,24 +31,12 @@ This tool requires you to have installed and configured Dashlane's official CLI 
 ### Usage:
 
 ``` bash
-aws sso login  --profile login --no-browser | headless-sso
+aws sso login --profile login --no-browser | ./headless-aws-sso-with-okta "${USERNAME}" '${PASSWORD}' "$(oathtool -b --totp ${MFA_SECRET})"
 ```
 
-
-**Note:** `headless-sso` gets the AWS user credentials from a `.netrc` file with the following format:
- > machine name has to be `headless-sso`
-
-```
-machine headless-sso
-login <username>
-password <something-secret>
-```
 **Example:**
 
-![headless-sso demo](./docs/demo.gif)
-
-### Limitations:
-- Only works with hardware MFA. This means the case were MFA isn't used or is done by inputting the MFA token is presently unhandled.
+![headless-aws-sso-with-okta demo](./docs/demo.gif)
 
 ### Release Notes:
 Working but still WiP, contributions welcome.

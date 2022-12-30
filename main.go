@@ -6,9 +6,7 @@ import (
 	b64 "encoding/base64"
 	"encoding/json"
 	"errors"
-	"log"
 	"os"
-	"os/exec"
 	"regexp"
 	"time"
 
@@ -46,12 +44,14 @@ type Credential struct {
 
 func main() {
 	spinner.Start()
-	mfa_code := os.Args[1]
+	username := os.Args[1]
+	password := os.Args[2]
+	mfa_code := os.Args[3]
 
 	// get sso url from stdin
 	url := getURL()
 	// start aws sso login
-	ssoLogin(mfa_code, url)
+	ssoLogin(username, password, mfa_code, url)
 
 	spinner.Stop()
 	time.Sleep(1 * time.Second)
@@ -76,37 +76,8 @@ func getURL() string {
 	return url
 }
 
-// get okta credentials from dashlane
-func getCredentials() (string, string) {
-	spinner.Message("fetching credentials from Dashlane")
-
-	// Run dcli from shell, receive output in JSON format
-	cmd := exec.Command("dcli", "password", "okta", "--output", "json")
-	out, err := cmd.CombinedOutput()
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	// Extract okta creds from output JSON
-	var arr []Credential
-	_ = json.Unmarshal(out, &arr)
-	creds := arr[0]
-
-	var username string
-	if len(creds.Email) > 0 {
-		username = creds.Email
-	} else if len(creds.Login) > 0 {
-		username = creds.Login
-	} else {
-		error("Cannot find a valid login.")
-	}
-	passphrase := creds.Password
-	return username, passphrase
-}
-
 // login with hardware MFA
-func ssoLogin(mfa_code string, url string) {
-	username, passphrase := getCredentials()
+func ssoLogin(username, password, mfa_code, url string) {
 	spinner.Message(color.MagentaString("init headless-browser"))
 	spinner.Pause()
 	browser := rod.New().MustConnect()
@@ -121,7 +92,7 @@ func ssoLogin(mfa_code string, url string) {
 		page.MustElementR("button", "Next").MustWaitEnabled().MustClick()
 
 		// sign-in
-		oktaSignIn(*page, username, passphrase)
+		oktaSignIn(*page, username, password)
 		oktaAuthMfa(*page, mfa_code)
 
 		// allow request
@@ -150,16 +121,16 @@ func ssoLogin(mfa_code string, url string) {
 }
 
 // executes okta signin step
-func oktaSignIn(page rod.Page, username, passphrase string) {
+func oktaSignIn(page rod.Page, username, password string) {
 	page.Timeout(MFA_TIMEOUT * time.Second).MustElement(".okta-sign-in-header").MustWaitLoad()
 	page.MustElement("#okta-signin-username").MustInput(username)
-	page.MustElement("#okta-signin-password").MustInput(passphrase)
+	page.MustElement("#okta-signin-password").MustInput(password)
 	page.MustWaitLoad().MustElementR("input", "Sign In").MustClick()
 }
 
 // TODO: allow user to enter MFA Code
 func mfa(page rod.Page) {
-	_ = beeep.Notify("headless-sso", "Touch U2F device to proceed with authenticating AWS SSO", "")
+	_ = beeep.Notify("headless-aws-sso-with-okta", "Touch U2F device to proceed with authenticating AWS SSO", "")
 	_ = beeep.Beep(beeep.DefaultFreq, beeep.DefaultDuration)
 
 	spinner.Message(color.YellowString("Touch U2F"))
@@ -178,7 +149,7 @@ func loadCookies(browser rod.Browser) {
 		error(err.Error())
 	}
 
-	data, _ := os.ReadFile(dirname + "/.headless-sso")
+	data, _ := os.ReadFile(dirname + "/.headless-aws-sso-with-okta")
 	sEnc, _ := b64.StdEncoding.DecodeString(string(data))
 	var cookie *proto.NetworkCookie
 	json.Unmarshal(sEnc, &cookie)
@@ -202,7 +173,7 @@ func saveCookies(browser rod.Browser) {
 			data, _ := json.Marshal(cookie)
 
 			sEnc := b64.StdEncoding.EncodeToString([]byte(data))
-			err = os.WriteFile(dirname+"/.headless-sso", []byte(sEnc), 0644)
+			err = os.WriteFile(dirname+"/.headless-aws-sso-with-okta", []byte(sEnc), 0644)
 
 			if err != nil {
 				error("Failed to save x-amz-sso_authn cookie")

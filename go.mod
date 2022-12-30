@@ -1,11 +1,10 @@
-module github.com/maxcroy1/linksquares-headless-sso
+module github.com/ekesken/headless-aws-sso-with-okta
 
 go 1.17
 
 require (
 	github.com/fatih/color v1.13.0
 	github.com/gen2brain/beeep v0.0.0-20220518085355-d7852edf42fc
-	github.com/git-lfs/go-netrc v0.0.0-20210914205454-f0c862dd687a
 	github.com/go-rod/rod v0.111.0
 )
 
