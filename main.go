@@ -2,153 +2,201 @@ package main
 
 import (
 	"bufio"
-	"context"
 	b64 "encoding/base64"
 	"encoding/json"
-	"errors"
+	"flag"
+	"fmt"
 	"os"
+	"path/filepath"
 	"regexp"
+	"strconv"
 	"time"
 
-	"github.com/fatih/color"
-	"github.com/gen2brain/beeep"
-	"github.com/theckman/yacspin"
-
 	"github.com/go-rod/rod"
+	"github.com/go-rod/rod/lib/launcher"
 	"github.com/go-rod/rod/lib/proto"
 )
 
-// Time before MFA step times out
-const MFA_TIMEOUT = 30
+var (
+	scanner         = bufio.NewScanner(os.Stdin)
+	screenshotCount = 0
+	sessionId       = strconv.FormatInt(time.Now().Unix(), 10)
+	showBrowser     bool
+	verbose         bool
+	captureState    bool
+	oktaAuth        string
+	anchorLabel     string
+	email           string
+	out             *outputManager
+)
 
-var cfg = yacspin.Config{
-	Frequency:         100 * time.Millisecond,
-	CharSet:           yacspin.CharSets[59],
-	Suffix:            "AWS SSO Signing in: ",
-	SuffixAutoColon:   false,
-	Message:           "",
-	StopCharacter:     "✓",
-	StopFailCharacter: "✗",
-	StopMessage:       "Logged in successfully",
-	StopFailMessage:   "Log in failed",
-	StopColors:        []string{"fgGreen"},
-}
-
-var spinner, _ = yacspin.New(cfg)
-
-type Credential struct {
-	Email    string
-	Login    string
-	Password string
-}
+const cookieFileName = ".headless-aws-sso-with-okta"
 
 func main() {
-	spinner.Start()
-	username := os.Args[1]
-	password := os.Args[2]
-	mfa_code := os.Args[3]
+	flag.BoolVar(&showBrowser, "show-browser", false, "Show browser window during login")
+	flag.BoolVar(&verbose, "verbose", false, "Print verbose output")
+	flag.BoolVar(&captureState, "capture-state", false, "Take screenshots and dump html of each login page")
+	flag.StringVar(&oktaAuth, "okta-auth", "push-notification", "Okta authentication method (fastpass or push-notification)")
+	flag.StringVar(&email, "email", "", "email to sign in with. Okta FastPass will be used if not specified.)")
+	flag.Parse()
 
-	// get sso url from stdin
-	url := getURL()
-	// start aws sso login
-	ssoLogin(username, password, mfa_code, url)
+	out = NewOutputManager(verbose)
 
-	spinner.Stop()
-	time.Sleep(1 * time.Second)
-}
-
-// returns sso url from stdin.
-func getURL() string {
-	spinner.Message("reading url from stdin")
-
-	scanner := bufio.NewScanner(os.Stdin)
-	url := ""
-	for url == "" {
-		scanner.Scan()
-		t := scanner.Text()
-		r, _ := regexp.Compile("^https.*user_code=([A-Z]{4}-?){2}")
-
-		if r.MatchString(t) {
-			url = t
-		}
-	}
-
-	return url
-}
-
-// login with hardware MFA
-func ssoLogin(username, password, mfa_code, url string) {
-	spinner.Message(color.MagentaString("init headless-browser"))
-	spinner.Pause()
-	browser := rod.New().MustConnect()
-	defer browser.MustClose()
-
-	err := rod.Try(func() {
-		page := browser.MustPage(url)
-
-		// authorize
-		spinner.Unpause()
-		spinner.Message("logging in")
-		page.MustElementR("button", "Next").MustWaitEnabled().MustClick()
-
-		// sign-in
-		oktaSignIn(*page, username, password)
-		oktaAuthMfa(*page, mfa_code)
-
-		// allow request
-		unauthorized := true
-		for unauthorized {
-
-			txt := page.Timeout(MFA_TIMEOUT * time.Second).MustElement(".awsui-util-mb-s").MustWaitLoad().MustText()
-			if txt == "Request approved" {
-				unauthorized = false
-			} else {
-				exists, _, _ := page.HasR("button", "Allow")
-				if exists {
-					page.MustWaitLoad().MustElementR("button", "Allow").MustClick()
-				}
-
-				time.Sleep(500 * time.Millisecond)
-			}
-		}
+	flag.VisitAll(func(f *flag.Flag) {
+		out.debug(fmt.Sprintf("%s=%v", f.Name, f.Value))
 	})
 
-	if errors.Is(err, context.DeadlineExceeded) {
-		panic("Timed out waiting for MFA")
-	} else if err != nil {
-		panic(err.Error())
+	defer func() {
+		if r := recover(); r != nil {
+			out.error(fmt.Errorf("%v", r))
+			os.Exit(1)
+		}
+	}()
+
+	if oktaAuth != "fastpass" && oktaAuth != "push-notification" {
+		panic("invalid value for okta-auth flag: must be either 'fastpass' or 'push-notification'")
+	}
+
+	var label string
+	if oktaAuth == "push-notification" {
+		label = "Select to get a push notification to the Okta Verify app."
+	} else {
+		label = "Select Okta FastPass."
+	}
+	anchorLabel = fmt.Sprintf("a[aria-label='%s']", label)
+	url := getURL()
+
+	login(url)
+	// Consume and display message saying login was successful
+	out.debug("Waiting to receive success confirmation")
+	line := readLineFromStdin(time.Second * 10)
+	out.close(line)
+}
+
+func readLineFromStdin(timeout time.Duration) string {
+	lineChan := make(chan string)
+	errChan := make(chan error)
+
+	go func() {
+		if scanner.Scan() {
+			line := scanner.Text()
+			if verbose {
+				fmt.Printf("STDIN: %s\n", line)
+			}
+			lineChan <- line
+		} else if err := scanner.Err(); err != nil {
+			errChan <- err
+		}
+	}()
+
+	select {
+	case line := <-lineChan:
+		return line
+	case err := <-errChan:
+		panic(err)
+	case <-time.After(timeout):
+		panic(fmt.Errorf("timed out"))
 	}
 }
 
-// executes okta signin step
-func oktaSignIn(page rod.Page, username, password string) {
-	page.Timeout(MFA_TIMEOUT * time.Second).MustElement(".okta-sign-in-header").MustWaitLoad()
-	page.MustElement("#okta-signin-username").MustInput(username)
-	page.MustElement("#okta-signin-password").MustInput(password)
-	page.MustWaitLoad().MustElementR("input", "Sign In").MustClick()
+func getURL() string {
+	out.debug("Reading url from stdin")
+	for {
+		line := readLineFromStdin(time.Second * 5)
+		pattern, _ := regexp.Compile("^https.*user_code=([A-Z]{4}-?){2}")
+		if pattern.MatchString(line) {
+			return line
+		}
+	}
 }
 
-// TODO: allow user to enter MFA Code
-func mfa(page rod.Page) {
-	_ = beeep.Notify("headless-aws-sso-with-okta", "Touch U2F device to proceed with authenticating AWS SSO", "")
-	_ = beeep.Beep(beeep.DefaultFreq, beeep.DefaultDuration)
-
-	spinner.Message(color.YellowString("Touch U2F"))
+func click(page *rod.Page, elem *rod.Element) {
+	capturePageState(page)
+	elem.MustWaitEnabled().MustClick()
+	page.MustWaitLoad()
+	capturePageState(page)
 }
 
-func oktaAuthMfa(page rod.Page, mfaCode string) {
-	page.MustElement("form.mfa-verify-totp input").MustInput(mfaCode)
-	page.MustWaitLoad().MustElementR("input", "Verify").MustClick()
+func handleSignIn(page *rod.Page, fastPassButton *rod.Element) {
+	// Sign in with email if one was provided, otherwise open okta verify
+	if email != "" {
+		out.debug("Submitting email " + email)
+		page.MustElement(`input[name="identifier"]`).MustInput(email)
+		nextButton := page.MustElement(`input[value="Next"]`)
+		click(page, nextButton)
+	} else {
+		out.debug("Opening Okta Verify")
+		click(page, fastPassButton)
+	}
+
+	page.Race().ElementR("a", "Open Okta Verify").MustHandle(func(elem *rod.Element) {
+		panic("Okta Verify is not installed. Please sign in with email.")
+	}).ElementR(anchorLabel, "Select").MustHandle(func(selectElem *rod.Element) {
+		out.debug(fmt.Sprintf("Selecting to authenticate with %s", oktaAuth))
+		click(page, selectElem)
+		out.info("Waiting for user verification")
+		allowElem := page.MustElementR("button", "Allow")
+		handleAllow(page, allowElem)
+	}).MustDo()
+
 }
 
-// load cookies
+func handleAllow(page *rod.Page, elem *rod.Element) {
+	out.info("Waiting for user verification")
+	click(page, elem)
+	// After clicking "Allow", we must wait for the "Request approved" screen to appear
+	// before closing the browser, otherwise the login will not complete.
+	page.MustElementR("div", "Request approved")
+}
+
+func login(url string) {
+	out.debug("Initializing browser")
+	var browser *rod.Browser
+	if !showBrowser {
+		browser = rod.New().MustConnect()
+	} else {
+		url := launcher.New().Headless(false).MustLaunch()
+		browser = rod.New().ControlURL(url).MustConnect()
+	}
+	defer browser.MustClose()
+	out.info("Submitting authentication request to Okta")
+	loadCookies(*browser)
+	out.debug("Loading " + url)
+	page := browser.MustPage(url).Timeout(time.Minute * 2).MustWaitLoad()
+	capturePageState(page)
+	// Authorization requested page with confirmation code
+	elem := page.MustElementR("button", "Confirm and continue")
+	click(page, elem)
+
+	page.Race().ElementR("a", "Sign in with Okta FastPass").MustHandle(func(elem *rod.Element) {
+		// Okta sign in page, with "Sign in with Okta FastPass" button, and a username input textbox
+		handleSignIn(page, elem)
+	}).ElementR("button", "Allow").MustHandle(func(elem *rod.Element) {
+		// If the user has saved cookies, we'll jump right to the "Allow Access" screen.
+		handleAllow(page, elem)
+	}).MustDo()
+
+	saveCookies(*browser)
+}
+
+func capturePageState(page *rod.Page) {
+	if captureState {
+		html, err := page.HTML()
+		if err != nil {
+			panic(err)
+		}
+		os.WriteFile(fmt.Sprintf("screen-%s-%d.html", sessionId, screenshotCount), []byte(html), 0644)
+		page.MustScreenshotFullPage(fmt.Sprintf("sso-screenshot-%s-%d.png", sessionId, screenshotCount))
+		screenshotCount++
+	}
+}
 func loadCookies(browser rod.Browser) {
-	spinner.Message("loading cookies")
 	dirname, err := os.UserHomeDir()
 	if err != nil {
-		error(err.Error())
+		panic(err)
 	}
-
+	path := filepath.Join(dirname, cookieFileName)
+	out.debug("Loading cookies: " + path)
 	data, _ := os.ReadFile(dirname + "/.headless-aws-sso-with-okta")
 	sEnc, _ := b64.StdEncoding.DecodeString(string(data))
 	var cookie *proto.NetworkCookie
@@ -159,13 +207,13 @@ func loadCookies(browser rod.Browser) {
 	}
 }
 
-// save authn cookie
 func saveCookies(browser rod.Browser) {
 	dirname, err := os.UserHomeDir()
 	if err != nil {
-		error(err.Error())
+		panic(err)
 	}
-
+	path := filepath.Join(dirname, cookieFileName)
+	out.debug("Saving cookies: " + path)
 	cookies := (browser.MustGetCookies())
 
 	for _, cookie := range cookies {
@@ -173,26 +221,12 @@ func saveCookies(browser rod.Browser) {
 			data, _ := json.Marshal(cookie)
 
 			sEnc := b64.StdEncoding.EncodeToString([]byte(data))
-			err = os.WriteFile(dirname+"/.headless-aws-sso-with-okta", []byte(sEnc), 0644)
+			err = os.WriteFile(path, []byte(sEnc), 0644)
 
 			if err != nil {
-				error("Failed to save x-amz-sso_authn cookie")
+				panic(err)
 			}
 			break
 		}
 	}
-}
-
-// print error message and exit
-func panic(errorMsg string) {
-	red := color.New(color.FgRed).SprintFunc()
-	spinner.StopFailMessage(red("Login failed error - " + errorMsg))
-	spinner.StopFail()
-	os.Exit(1)
-}
-
-// print error message
-func error(errorMsg string) {
-	yellow := color.New(color.FgYellow).SprintFunc()
-	spinner.Message("Warn: " + yellow(errorMsg))
 }
