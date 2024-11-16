@@ -1,4 +1,4 @@
-module github.com/ekesken/headless-aws-sso-with-okta
+module github.com/rculbertson/headless-aws-sso-with-okta
 
 go 1.17
 
