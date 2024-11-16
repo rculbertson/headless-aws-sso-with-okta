@@ -21,6 +21,7 @@ var (
 	scanner         = bufio.NewScanner(os.Stdin)
 	screenshotCount = 0
 	sessionId       = strconv.FormatInt(time.Now().Unix(), 10)
+	version         = "dev"
 	showBrowser     bool
 	verbose         bool
 	captureState    bool
@@ -38,7 +39,13 @@ func main() {
 	flag.BoolVar(&captureState, "capture-state", false, "Take screenshots and dump html of each login page")
 	flag.StringVar(&oktaAuth, "okta-auth", "push-notification", "Okta authentication method (fastpass or push-notification)")
 	flag.StringVar(&email, "email", "", "email to sign in with. Okta FastPass will be used if not specified.)")
+	versionFlag := flag.Bool("version", false, "Print the version and exit")
 	flag.Parse()
+
+	if *versionFlag {
+		fmt.Println(version)
+		os.Exit(0)
+	}
 
 	out = NewOutputManager(verbose)
 	out.info("Initializing")
