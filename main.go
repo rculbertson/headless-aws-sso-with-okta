@@ -41,6 +41,7 @@ func main() {
 	flag.Parse()
 
 	out = NewOutputManager(verbose)
+	out.info("Initializing")
 
 	flag.VisitAll(func(f *flag.Flag) {
 		out.debug(fmt.Sprintf("%s=%v", f.Name, f.Value))
@@ -67,6 +68,7 @@ func main() {
 	url := getURL()
 
 	login(url)
+
 	// Consume and display message saying login was successful
 	out.debug("Waiting to receive success confirmation")
 	line := readLineFromStdin(time.Second * 10)
@@ -134,7 +136,7 @@ func handleSignIn(page *rod.Page, fastPassButton *rod.Element) {
 	}).ElementR(anchorLabel, "Select").MustHandle(func(selectElem *rod.Element) {
 		out.debug(fmt.Sprintf("Selecting to authenticate with %s", oktaAuth))
 		click(page, selectElem)
-		out.info("Waiting for user verification")
+		out.info("Waiting for user to authenticate")
 		allowElem := page.MustElementR("button", "Allow")
 		handleAllow(page, allowElem)
 	}).MustDo()
@@ -142,8 +144,8 @@ func handleSignIn(page *rod.Page, fastPassButton *rod.Element) {
 }
 
 func handleAllow(page *rod.Page, elem *rod.Element) {
-	out.info("Waiting for user verification")
 	click(page, elem)
+	out.info("Waiting for authentication to complete")
 	// After clicking "Allow", we must wait for the "Request approved" screen to appear
 	// before closing the browser, otherwise the login will not complete.
 	page.MustElementR("div", "Request approved")
@@ -159,7 +161,7 @@ func login(url string) {
 		browser = rod.New().ControlURL(url).MustConnect()
 	}
 	defer browser.MustClose()
-	out.info("Submitting authentication request to Okta")
+	out.info("Submitting request to Okta")
 	loadCookies(*browser)
 	out.debug("Loading " + url)
 	page := browser.MustPage(url).Timeout(time.Minute * 2).MustWaitLoad()

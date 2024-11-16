@@ -3,36 +3,39 @@ package main
 import (
 	"fmt"
 	"runtime/debug"
-	"strings"
 	"time"
 
-	"github.com/fatih/color"
 	"github.com/theckman/yacspin"
 )
 
 type outputManager struct {
-	spinner    *yacspin.Spinner
-	lastStatus string
-	verbose    bool
+	spinner *yacspin.Spinner
+	verbose bool
 }
 
 func NewOutputManager(verbose bool) *outputManager {
-	cfg := yacspin.Config{
+	return &outputManager{
+		verbose: verbose,
+	}
+}
+
+func config(msg string) yacspin.Config {
+	return yacspin.Config{
 		CharSet:           yacspin.CharSets[59],
 		Frequency:         100 * time.Millisecond,
-		Message:           "Initializing",
+		Message:           msg,
 		ShowCursor:        true,
 		StopCharacter:     "✓",
 		StopColors:        []string{"fgGreen"},
 		StopFailCharacter: "✗",
-		StopMessage:       "Logged in successfully",
-		StopFailMessage:   "Log in failed",
+		StopMessage:       msg,
+		StopFailMessage:   msg,
 		StopFailColors:    []string{"fgRed"},
-		Suffix:            "AWS SSO: ",
 		SuffixAutoColon:   false,
 	}
-
-	spinner, err := yacspin.New(cfg)
+}
+func createSpinner(msg string) *yacspin.Spinner {
+	spinner, err := yacspin.New(config(msg))
 	if err != nil {
 		panic(fmt.Errorf("failed to create spinner: %w", err))
 	}
@@ -42,20 +45,17 @@ func NewOutputManager(verbose bool) *outputManager {
 			panic(fmt.Errorf("failed to start spinner: %w", err))
 		}
 	}
-	x := &outputManager{
-		lastStatus: "Iinitializing",
-		spinner:    spinner,
-		verbose:    verbose,
-	}
-	return x
+	return spinner
 }
 
 func (o *outputManager) info(msg string) {
-	o.lastStatus = msg
 	if verbose {
 		fmt.Println(msg)
 	} else {
-		o.spinner.Message(msg)
+		if o.spinner != nil {
+			o.spinner.Stop()
+		}
+		o.spinner = createSpinner(msg)
 	}
 }
 
@@ -66,14 +66,13 @@ func (o *outputManager) debug(msg string) {
 }
 
 func (o *outputManager) error(err error) {
-	msg := fmt.Sprintf("Failure while %s: %v", strings.ToLower(o.lastStatus), err)
+	msg := fmt.Sprintf("Failure: %v", err)
 	if verbose {
 		fmt.Println(msg)
 		fmt.Printf("%s\n", debug.Stack())
 	} else {
-		red := color.New(color.FgRed).SprintFunc()
-		o.spinner.StopFailMessage(red(msg))
 		o.spinner.StopFail()
+		fmt.Println(msg)
 	}
 }
 
@@ -81,7 +80,7 @@ func (o *outputManager) close(msg string) {
 	if verbose {
 		fmt.Println(msg)
 	} else {
-		o.spinner.StopMessage(msg)
 		o.spinner.Stop()
+		fmt.Println(msg)
 	}
 }
