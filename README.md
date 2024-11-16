@@ -1,52 +1,51 @@
 # headless-aws-sso-with-okta
 
-Run `aws sso login` without having to open a browser, or click any buttons. 
+[![CI](https://github.com/rculbertson/headless-aws-sso-with-okta/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/rculbertson/headless-aws-sso-with-okta/actions/workflows/ci.yml)
+[![Go Report Card](https://goreportcard.com/badge/github.com/rculbertson/headless-aws-sso-with-okta)](https://goreportcard.com/report/github.com/rculbertson/headless-aws-sso-with-okta)
 
-[![Go Reference](https://pkg.go.dev/badge/github.com/rculbertson/headless-aws-sso-with-okta.svg)](https://pkg.go.dev/github.com/rculbertson/headless-aws-sso-with-okta) [![Go Report Card](https://goreportcard.com/badge/github.com/rculbertson/headless-aws-sso-with-okta)](https://goreportcard.com/report/github.com/rculbertson/headless-aws-sso-with-okta)
+Run `aws sso login` without having to open a browser.
+
+<img src="./docs/demo.gif" alt="Description" width="400" height="100">
 
 ## Install
 
-To download the latest release, run:
+### Linux / MacOS
 
-```sh
- curl --silent --location https://github.com/rculbertson/headless-aws-sso-with-okta/releases/latest/download/headless-aws-sso-with-okta_0.1.0_$(uname -s)_$(uname -m).tar.gz | tar xz -C /tmp/
- sudo mv /tmp/headless-aws-sso-with-okta /usr/local/bin
+```bash
+curl --silent --location https://github.com/rculbertson/headless-aws-sso-with-okta/releases/latest/download/headless-aws-sso-with-okta_0.1.0_$(uname -s)_$(uname -m).tar.gz | tar xz -C /tmp/
+sudo mv /tmp/headless-aws-sso-with-okta /usr/local/bin
 ```
 
-Alternatively:
+### Windows
 
-```sh
+Download latest Windows binary from the [Releases Page](https://github.com/rculbertson/headless-aws-sso-with-okta/releases) and unzip to location in PATH
+
+### From Source
+
+```bash
 go install github.com/rculbertson/headless-aws-sso-with-okta@latest
 ```
 
-**Windows**: Download latest Windows binary from the [Releases Page](https://github.com/rculbertson/headless-aws-sso-with-okta/releases) and unzip to location in PATH
+## Usage
 
-## Usage:
+### Authenticate with email and a push notification (Linux, MacOS, Windows)
 
-### Authenticate with Okta Verify and push notification
-
-```bash
-aws sso login --no-browser | ./headless-aws-sso-with-okta --okta-auth push-notification
-```
-
-### Authenticate with Okta Verify and FastPass
-
-```bash
-aws sso login --no-browser | ./headless-aws-sso-with-okta --okta-auth fastpass
-```
-
-### Authenticate with email and push notification
-
-Use this method on linux, which doesn't support Okta Verify. Must use push-notification.
+Okta Verify and FastPass do not have linux support. You must specify your email address and authenticate with a push notification.
 
 ```bash
 aws sso login --no-browser | ./headless-aws-sso-with-okta --email <EMAIL> --okta-auth push-notification
 ```
 
-**Example:**
+### Authenticate with Okta Verify and FastPass (MacOS, Windows)
 
-![headless-aws-sso-with-okta demo](./docs/demo.gif)
+Uses FastPass's authentication method, e.g. your fingerprint.
 
-### License:
+```bash
+aws sso login --no-browser | ./headless-aws-sso-with-okta --okta-auth fastpass
+```
 
-Apache-2.0
+### Authenticate with Okta Verify and a push notification (MacOS, Windows)
+
+```bash
+aws sso login --no-browser | ./headless-aws-sso-with-okta --okta-auth push-notification
+```
