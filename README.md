@@ -12,7 +12,7 @@ Run `aws sso login` without having to open a browser.
 ### Linux / MacOS
 
 ```bash
-curl --silent --location https://github.com/rculbertson/headless-aws-sso-with-okta/releases/latest/download/headless-aws-sso-with-okta_0.1.0_$(uname -s)_$(uname -m).tar.gz | tar xz -C /tmp/
+curl -sL "https://github.com/rculbertson/headless-aws-sso-with-okta/releases/download/0.1.2/headless-aws-sso-with-okta_.0.1.2_$(uname -s)_$(uname -m).tar.gz" | tar xz -C /tmp/
 sudo mv /tmp/headless-aws-sso-with-okta /usr/local/bin
 ```
 
@@ -27,6 +27,8 @@ go install github.com/rculbertson/headless-aws-sso-with-okta@latest
 ```
 
 ## Usage
+
+The first run requires you to authenticate using either a push notification or Okta FastPass. Subsequent runs will authenticate using a saved cookie, making them much faster.
 
 ### Authenticate with email and a push notification (Linux, MacOS, Windows)
 
