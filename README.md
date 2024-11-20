@@ -35,7 +35,7 @@ The first run requires you to authenticate using either a push notification or O
 Okta Verify and FastPass do not have linux support. You must specify your email address and authenticate with a push notification.
 
 ```bash
-aws sso login --no-browser | ./headless-aws-sso-with-okta --email <EMAIL> --okta-auth push-notification
+aws sso login --no-browser | headless-aws-sso-with-okta --email <EMAIL> --okta-auth push-notification
 ```
 
 ### Authenticate with Okta Verify and FastPass (MacOS, Windows)
@@ -43,11 +43,11 @@ aws sso login --no-browser | ./headless-aws-sso-with-okta --email <EMAIL> --okta
 Uses FastPass's authentication method, e.g. your fingerprint.
 
 ```bash
-aws sso login --no-browser | ./headless-aws-sso-with-okta --okta-auth fastpass
+aws sso login --no-browser | headless-aws-sso-with-okta --okta-auth fastpass
 ```
 
 ### Authenticate with Okta Verify and a push notification (MacOS, Windows)
 
 ```bash
-aws sso login --no-browser | ./headless-aws-sso-with-okta --okta-auth push-notification
+aws sso login --no-browser | headless-aws-sso-with-okta --okta-auth push-notification
 ```
