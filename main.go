@@ -38,12 +38,12 @@ const cookieFileName = ".headless-aws-sso-with-okta"
 const browserTimeout = 2 * time.Minute
 
 func main() {
-	flag.BoolVar(&showBrowser, "show-browser", false, "Show browser window during login")
-	flag.BoolVar(&verbose, "verbose", false, "Print verbose output")
-	flag.BoolVar(&captureState, "capture-state", false, "Take screenshots and dump html of each login page")
-	flag.StringVar(&oktaAuth, "okta-auth", "push-notification", "Okta authentication method (fastpass or push-notification)")
-	flag.StringVar(&email, "email", "", "email to sign in with. Okta FastPass will be used if not specified.)")
-	versionFlag := flag.Bool("version", false, "Print the version and exit")
+	flag.BoolVar(&showBrowser, "show-browser", false, "Show browser window during login.")
+	flag.BoolVar(&verbose, "verbose", false, "Print verbose output.")
+	flag.BoolVar(&captureState, "capture-state", false, "Take screenshots and dump html of each login page.")
+	flag.StringVar(&oktaAuth, "okta-auth", "push-notification", "Okta authentication method - \"fastpass\" or \"push-notification\".")
+	flag.StringVar(&email, "email", "", "email to sign in with. Okta FastPass will be used if not specified.")
+	versionFlag := flag.Bool("version", false, "Print the version and exit.")
 	flag.Parse()
 
 	if *versionFlag {
@@ -179,7 +179,7 @@ func login(url string) {
 	ctx, cancel := context.WithCancelCause(context.Background())
 	page := browser.MustPage(url).Context(ctx)
 
-	// Add defer to check for context cancellation
+	// This checks for context cancellation
 	defer func() {
 		if cause := context.Cause(ctx); cause != nil {
 			// This will be caught by the defer in main()

@@ -9,7 +9,20 @@ Run `aws sso login` without having to open a browser.
 
 ## Install
 
+### Prerequisites
+
+On Linux, ensure nss is installed.
+
+```bash
+# Debian/Ubuntu
+sudo apt-get install libnss3
+
+# Fedora
+sudo dnf install nss
+```
+
 ### Linux / MacOS
+
 
 ```bash
 curl -sL "https://github.com/rculbertson/headless-aws-sso-with-okta/releases/download/0.1.2/headless-aws-sso-with-okta_.0.1.2_$(uname -s)_$(uname -m).tar.gz" | tar xz -C /tmp/
@@ -50,4 +63,22 @@ aws sso login --no-browser | headless-aws-sso-with-okta --okta-auth fastpass
 
 ```bash
 aws sso login --no-browser | headless-aws-sso-with-okta --okta-auth push-notification
+```
+
+### Flags
+```
+-capture-state
+    Take screenshots and dump html of each login page.
+-email string
+    email to sign in with. Okta FastPass will be used if not specified.
+-okta-auth string
+    Okta authentication method - "fastpass" or "push-notification". (default "push-notification")
+-rod string
+    Set the default value of options used by rod.
+-show-browser
+    Show browser window during login.
+-verbose
+    Print verbose output.
+-version
+    Print the version and exit.
 ```
