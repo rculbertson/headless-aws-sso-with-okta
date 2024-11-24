@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"context"
 	b64 "encoding/base64"
 	"encoding/json"
 	"flag"
@@ -32,6 +33,9 @@ var (
 )
 
 const cookieFileName = ".headless-aws-sso-with-okta"
+
+// The time out for navigating through all the browser pages
+const browserTimeout = 2 * time.Minute
 
 func main() {
 	flag.BoolVar(&showBrowser, "show-browser", false, "Show browser window during login")
@@ -167,11 +171,31 @@ func login(url string) {
 		url := launcher.New().Headless(false).MustLaunch()
 		browser = rod.New().ControlURL(url).MustConnect()
 	}
+
 	defer browser.MustClose()
 	out.info("Submitting request to Okta")
 	loadCookies(*browser)
 	out.debug("Loading " + url)
-	page := browser.MustPage(url).Timeout(time.Minute * 2).MustWaitLoad()
+	ctx, cancel := context.WithCancelCause(context.Background())
+	page := browser.MustPage(url).Context(ctx)
+
+	// Add defer to check for context cancellation
+	defer func() {
+		if cause := context.Cause(ctx); cause != nil {
+			// This will be caught by the defer in main()
+			panic(cause)
+		}
+	}()
+
+	go func() {
+		// We implement our own timeout cancellation rather than using the Timeout() method
+		// so we can capture the page state before raising the error.
+		time.Sleep(browserTimeout)
+		capturePageState(page)
+		cancel(fmt.Errorf("timed out after waiting %s to complete login", browserTimeout))
+	}()
+
+	page.MustWaitLoad()
 	capturePageState(page)
 	// Authorization requested page with confirmation code
 	elem := page.MustElementR("button", "Confirm and continue")
@@ -190,11 +214,8 @@ func login(url string) {
 
 func capturePageState(page *rod.Page) {
 	if captureState {
-		html, err := page.HTML()
-		if err != nil {
-			panic(err)
-		}
-		os.WriteFile(fmt.Sprintf("screen-%s-%d.html", sessionId, screenshotCount), []byte(html), 0644)
+		html := page.MustHTML()
+		os.WriteFile(fmt.Sprintf("sso-page-%s-%d.html", sessionId, screenshotCount), []byte(html), 0644)
 		page.MustScreenshotFullPage(fmt.Sprintf("sso-screenshot-%s-%d.png", sessionId, screenshotCount))
 		screenshotCount++
 	}
