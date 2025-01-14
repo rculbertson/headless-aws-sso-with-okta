@@ -25,7 +25,7 @@ sudo dnf install nss
 
 
 ```bash
-curl -sL "https://github.com/rculbertson/headless-aws-sso-with-okta/releases/download/0.1.3/headless-aws-sso-with-okta_.0.1.3_$(uname -s)_$(uname -m).tar.gz" | tar xz -C /tmp/
+curl -sL "https://github.com/rculbertson/headless-aws-sso-with-okta/releases/download/0.1.4/headless-aws-sso-with-okta_.0.1.4_$(uname -s)_$(uname -m).tar.gz" | tar xz -C /tmp/
 sudo mv /tmp/headless-aws-sso-with-okta /usr/local/bin
 ```
 
