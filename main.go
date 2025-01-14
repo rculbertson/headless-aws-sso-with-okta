@@ -147,9 +147,8 @@ func handleSignIn(page *rod.Page, fastPassButton *rod.Element) {
 	}).ElementR(anchorLabel, "Select").MustHandle(func(selectElem *rod.Element) {
 		out.debug(fmt.Sprintf("Selecting to authenticate with %s", oktaAuth))
 		click(page, selectElem)
-		out.info("Waiting for user to authenticate")
-		allowElem := page.MustElementR("button", "Allow")
-		handleAllow(page, allowElem)
+		confirmElem := page.MustElementR("button", "Confirm and continue")
+		click(page, confirmElem)
 	}).MustDo()
 
 }
@@ -197,17 +196,18 @@ func login(url string) {
 
 	page.MustWaitLoad()
 	capturePageState(page)
-	// Authorization requested page with confirmation code
-	elem := page.MustElementR("button", "Confirm and continue")
-	click(page, elem)
 
 	page.Race().ElementR("a", "Sign in with Okta FastPass").MustHandle(func(elem *rod.Element) {
-		// Okta sign in page, with "Sign in with Okta FastPass" button, and a username input textbox
+		// Okta sign in page, with "Sign in with Okta FastPass" button, and a username input textbox.
+		// We get here if there are no cookies saved.
 		handleSignIn(page, elem)
-	}).ElementR("button", "Allow").MustHandle(func(elem *rod.Element) {
-		// If the user has saved cookies, we'll jump right to the "Allow Access" screen.
-		handleAllow(page, elem)
+	}).ElementR("button", "Confirm and continue").MustHandle(func(elem *rod.Element) {
+		// We jump right to here if there are cookies saved
+		click(page, elem)
 	}).MustDo()
+
+	allowElem := page.MustElementR("button", "Allow")
+	handleAllow(page, allowElem)
 
 	saveCookies(*browser)
 }
